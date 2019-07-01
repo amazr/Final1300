@@ -27,12 +27,22 @@ struct typelocation {
 	int location;	//This is the location of the LAST char in the type name
 };
 
+struct variable {
+	string name;
+	string type;
+};
+
 //This is the data that is available for each individual line
 struct line {
 	string lineStr;
 	string strLiteral = "";
 	int lineNum;
 };
+
+//Eventually this will evaluate an expression passed to it and return it... WIP
+auto evaluate(string expression) {
+
+}
 
 //This will display all characters to the right of "display:" to the terminal
 void displayFunction(line thisLine, int wordLocation) {
@@ -67,6 +77,19 @@ string fetchVarType(string varName, int lineNum) {
 	}
 	warnings.push_back(warnStr + " :" + varName + ": was not found");
 	return "";
+}
+
+//This will EVENTUALLY update a variables value... WIP
+void updateVar(line thisLine) {
+	size_t found;
+	variable thisVar;
+	for (auto var : var_types) {
+		found = thisLine.lineStr.find(var.first);
+		if (found != string::npos && found == 0) {
+			thisVar.name = var.first;
+			thisVar.type = var.second;
+		}
+	}
 }
 
 //This will create a string literal if a line has one. This is to exempt it from the clear whitespace rule
@@ -188,7 +211,7 @@ typelocation searchForType(line thisLine) {
 
 
 //This function gets a new variable name and stores it in the proper unordered map of that variables declared type
-void createNewVar(line thisLine, typelocation varType) {
+bool createNewVar(line thisLine, typelocation varType) {
 
 	size_t found = thisLine.lineStr.find("=");
 	string varName = "";
@@ -251,6 +274,7 @@ void createNewVar(line thisLine, typelocation varType) {
 		catch (out_of_range) {
 			warnings.push_back(warnStr + " Value out of range");
 		}
+		return true;
 	}
 
 	//dec variable creation 
@@ -271,16 +295,19 @@ void createNewVar(line thisLine, typelocation varType) {
 		catch (out_of_range) {
 			warnings.push_back(warnStr + " Value out of range" );
 		}
+		return true;
 	}
 
 	//chr variable creation
 	else if (varType.type == datatypes[2]) {
-		var_types[varName] = varType.type;
 		if (varValueStr.size() > 1) {
 			warnings.push_back(warnStr + " Incorrect value \'" + varValueStr + "\' entered");
+			return false;
 		}
 		else {
 			chr_vars[varName] = varValueStr[0];
+			var_types[varName] = varType.type;
+			return true;
 		}
 	}
 
@@ -293,6 +320,7 @@ void createNewVar(line thisLine, typelocation varType) {
 		
 		str_vars[varName] = thisLine.strLiteral;
 
+		return true;
 
 	}
 
@@ -310,30 +338,41 @@ void createNewVar(line thisLine, typelocation varType) {
 		}
 		else {
 			warnings.push_back(warnStr + " Incorrect value for " + varName + " EXPECTED: true or false or no value after '='");
+			return false;
 		}
+
+		return true;
 	}
 
 	else if (varType.type == "bad") {
 		warnings.push_back(warnStr + " " +varName+ " is an invalid variable name");
+		return false;
 	}
 
-
+	return false;
 }
 
 //this function will interpret each line
 void readLine(line thisLine) {
+
 	typelocation newType;
 	warnStr = "WARNING[line " + to_string(thisLine.lineNum) + "]:";
+	bool varCreated = false;
+
 	//This will also handle the spacing within string literals
 	thisLine = removeWhitespace(thisLine);
 
-	//Find new datatype
+	//Find new datatype and then create a new variable
 	newType = searchForType(thisLine);
 	if (newType.location != -1) {
-		createNewVar(thisLine, newType);
+		varCreated = createNewVar(thisLine, newType);
 	}
-
-	checkForKeywords(thisLine);
+	
+	//This will be called to update variables and check if a keyword was used 
+	if (!varCreated) {
+		updateVar(thisLine);
+		checkForKeywords(thisLine);
+	}
 }
 
 //this function opens the file to be read
