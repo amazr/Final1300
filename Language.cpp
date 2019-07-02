@@ -16,7 +16,7 @@ unordered_map<string, string> var_types;
 
 //Vectors for various things
 vector<string> datatypes = { "int", "dec", "chr", "str", "bol" };
-vector<string> operators = {"+", "-", "*", "/", "++", "--", "+=", "-=", "%"};
+vector<string> operators = {"+", "-", "*", "/", "%", "++", "--", "+=", "-="};
 vector<string> keywords = { "display" };
 vector<string> warnings;
 string warnStr;
@@ -27,11 +27,6 @@ struct typelocation {
 	int location;	//This is the location of the LAST char in the type name
 };
 
-struct variable {
-	string name;
-	string type;
-};
-
 //This is the data that is available for each individual line
 struct line {
 	string lineStr;
@@ -40,8 +35,8 @@ struct line {
 };
 
 //Eventually this will evaluate an expression passed to it and return it... WIP
-auto evaluate(string expression) {
-
+auto evaluate(string expression, string type) {
+	return 0;
 }
 
 //This will display all characters to the right of "display:" to the terminal
@@ -57,37 +52,161 @@ void displayFunction(line thisLine, int wordLocation) {
 }
 
 //This function will check if a keyword was used and handle that keywords function
-void checkForKeywords(line thisLine) {
+bool checkForKeywords(line thisLine) {
 	for (auto word : keywords) {
 		size_t found = thisLine.lineStr.find(word);
 		if (found != string::npos) {
+			//found display 
 			if (word == keywords.at(0)) {
 				displayFunction(thisLine, found);
+				return true;
 			}
 		}
 	}
+
+	return false;
 }
 
-//If a variable is found in the program this will spit out its type making searching the unordered maps pretty ezpz
-string fetchVarType(string varName, int lineNum) {
-	for (auto elem : var_types) {
-		if (elem.first == varName) {
-			return elem.second;
-		}
+//This will return an error if a var is not found in the map... call this always for errors
+string fetchVarType(string varName) {
+	auto found = var_types.find(varName);
+	if (found != var_types.end()) {
+		return var_types[varName];
 	}
-	warnings.push_back(warnStr + " :" + varName + ": was not found");
-	return "";
+	else {
+		warnings.push_back(warnStr + " :" + varName + ": was not found");
+		return "";
+	}
 }
 
 //This will EVENTUALLY update a variables value... WIP
 void updateVar(line thisLine) {
-	size_t found;
-	variable thisVar;
-	for (auto var : var_types) {
-		found = thisLine.lineStr.find(var.first);
-		if (found != string::npos && found == 0) {
-			thisVar.name = var.first;
-			thisVar.type = var.second;
+
+	string varName = "";
+	string expression = "";
+	bool doUpdate = false;
+
+	int newIntVal;
+	float newDecVal;
+	char newChrVal;
+	string newStrVal;
+	bool newBolVal;
+
+	//Iterate through line to find stuff
+	for (int i = 0; i < thisLine.lineStr.size(); i++) {
+
+		varName += thisLine.lineStr[i];
+
+		if (thisLine.lineStr[i] == '=') {
+			varName.erase(i);
+			for (int j = i + 1; j < thisLine.lineStr.size(); j++) {
+
+				expression += thisLine.lineStr[j];
+			}
+			doUpdate = true;
+			break;
+		}
+	}
+	if (doUpdate) {
+	
+		string varType = fetchVarType(varName);
+		bool isExpression = false;
+		
+		//Determines if an expression is complex
+		for (int i = 0; i < expression.size(); i++) {
+			for (int j = 0; j < 5; j++) {
+				if (expression[i] == operators[j][0]) {
+					isExpression = true;
+					break;
+				}
+			}
+		}
+
+		//new int value
+		if (varType == datatypes[0]) {
+			if (isExpression) {
+				newIntVal = evaluate(expression, datatypes[0]);
+				int_vars[varName] = newIntVal;
+			}
+			else {
+				try {
+					if (expression == "") {
+						//If var is not declared set it to 0
+						int_vars[varName] = 0;
+					}
+					else {
+						int_vars[varName] = stoi(expression);
+					}
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Incorrect value \'" + expression + "\' entered");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Value out of range");
+				}
+			}
+		}
+		//new dec value
+		else if (varType == datatypes[1]) {
+			if (isExpression) {
+				newDecVal = evaluate(expression, datatypes[1]);
+				dec_vars[varName] = newDecVal;
+			}
+			else {
+				try {
+					if (expression == "") {
+						//If var is not declared set it to 0
+						dec_vars[varName] = 0;
+					}
+					else {
+						dec_vars[varName] = stof(expression);
+					}
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Incorrect value \'" + expression + "\' entered");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Value out of range");
+				}
+			}
+		}
+		//new chr value
+		if (varType == datatypes[2]) {
+
+			if (expression.size() > 1) {
+				warnings.push_back(warnStr + " Incorrect value \'" + expression + "\' entered");
+			}
+			else {
+				chr_vars[varName] = expression[0];
+			}
+		}
+		//new str value
+		else if (varType == datatypes[3]) {
+
+			if (thisLine.strLiteral == "" && expression != "") {
+				warnings.push_back(warnStr + " str value MUST be within quotes or be a var surrounded by ':'");
+			}
+
+			str_vars[varName] = thisLine.strLiteral;
+		}
+		//new bol value
+		else if (varType == datatypes[4]) {
+
+			if (expression == "") {
+				bol_vars[varName] = true;
+			}
+			else if (expression == "true") {
+				bol_vars[varName] = true;
+			}
+			else if (expression == "false") {
+				bol_vars[varName] = false;
+			}
+			else {
+				warnings.push_back(warnStr + " Incorrect value for " + varName + " EXPECTED: true or false or no value after '='");
+			}
+		}
+		else {
+			//do nothing
 		}
 	}
 }
@@ -103,7 +222,7 @@ line createStrLiteral(line thisLine) {
 	//This is some mumbo jumbo to search through the line find literals
 	for (int i = 0; i < thisLine.lineStr.size(); i++) {
 
-		if (thisLine.lineStr[i] == '"') {
+		if (thisLine.lineStr[i] == '"' && thisLine.lineStr[i - 1] != '\\') {
 			if (inLiteral) {
 				inLiteral = false;
 			}
@@ -113,6 +232,13 @@ line createStrLiteral(line thisLine) {
 		}
 		if (inLiteral && thisLine.lineStr[i] != '\"') {
 			thisLine.strLiteral += thisLine.lineStr[i];
+		}
+		//Support for \n character
+		if (inLiteral && thisLine.lineStr[i] == 'n' && thisLine.lineStr[i - 1] == '\\') {
+			int size = thisLine.strLiteral.size();
+			thisLine.strLiteral.erase(size - 1);
+			thisLine.strLiteral.erase(size - 2	);
+			thisLine.strLiteral += "\n";
 		}
 
 		//Ending line statement is a '.'
@@ -133,7 +259,7 @@ line createStrLiteral(line thisLine) {
 				vars.push_back(varName);
 
 				//this returns the vars type
-				string varType = fetchVarType(varName, thisLine.lineNum);	
+				string varType = fetchVarType(varName);	
 				varName = "";
 
 				//This is for int
@@ -211,7 +337,7 @@ typelocation searchForType(line thisLine) {
 
 
 //This function gets a new variable name and stores it in the proper unordered map of that variables declared type
-bool createNewVar(line thisLine, typelocation varType) {
+int createNewVar(line thisLine, typelocation varType) {
 
 	size_t found = thisLine.lineStr.find("=");
 	string varName = "";
@@ -254,6 +380,12 @@ bool createNewVar(line thisLine, typelocation varType) {
 		}
 	}
 
+	for (auto bad : var_types) {
+		if (varName == bad.first) {
+			varType.type = "bad";
+		}
+	}
+
 
 	//Integer variable creation
 	if (varType.type == datatypes[0]) {
@@ -274,7 +406,7 @@ bool createNewVar(line thisLine, typelocation varType) {
 		catch (out_of_range) {
 			warnings.push_back(warnStr + " Value out of range");
 		}
-		return true;
+		return 1;
 	}
 
 	//dec variable creation 
@@ -295,19 +427,19 @@ bool createNewVar(line thisLine, typelocation varType) {
 		catch (out_of_range) {
 			warnings.push_back(warnStr + " Value out of range" );
 		}
-		return true;
+		return 1;
 	}
 
 	//chr variable creation
 	else if (varType.type == datatypes[2]) {
 		if (varValueStr.size() > 1) {
 			warnings.push_back(warnStr + " Incorrect value \'" + varValueStr + "\' entered");
-			return false;
+			return 0;
 		}
 		else {
 			chr_vars[varName] = varValueStr[0];
 			var_types[varName] = varType.type;
-			return true;
+			return 1;
 		}
 	}
 
@@ -320,7 +452,7 @@ bool createNewVar(line thisLine, typelocation varType) {
 		
 		str_vars[varName] = thisLine.strLiteral;
 
-		return true;
+		return 1;
 
 	}
 
@@ -328,28 +460,28 @@ bool createNewVar(line thisLine, typelocation varType) {
 	else if (varType.type == datatypes[4]) {
 		var_types[varName] = varType.type;
 		if (varValueStr == "") {
-			bol_vars[varName] = true;
+			bol_vars[varName] = 1;
 		}
 		else if (varValueStr == "true") {
-			bol_vars[varName] = true;
+			bol_vars[varName] = 1;
 		}
 		else if (varValueStr == "false") {
-			bol_vars[varName] = false;
+			bol_vars[varName] = 1;
 		}
 		else {
 			warnings.push_back(warnStr + " Incorrect value for " + varName + " EXPECTED: true or false or no value after '='");
-			return false;
+			return 0;
 		}
 
-		return true;
+		return 1;
 	}
 
 	else if (varType.type == "bad") {
 		warnings.push_back(warnStr + " " +varName+ " is an invalid variable name");
-		return false;
+		return 2;
 	}
 
-	return false;
+	return 2;
 }
 
 //this function will interpret each line
@@ -357,7 +489,7 @@ void readLine(line thisLine) {
 
 	typelocation newType;
 	warnStr = "WARNING[line " + to_string(thisLine.lineNum) + "]:";
-	bool varCreated = false;
+	int varCreated = 0;
 
 	//This will also handle the spacing within string literals
 	thisLine = removeWhitespace(thisLine);
@@ -369,9 +501,11 @@ void readLine(line thisLine) {
 	}
 	
 	//This will be called to update variables and check if a keyword was used 
-	if (!varCreated) {
-		updateVar(thisLine);
-		checkForKeywords(thisLine);
+	if (varCreated == 0 && thisLine.lineStr != "") {
+		if (!checkForKeywords(thisLine)) {
+			updateVar(thisLine);
+		}
+		
 	}
 }
 
