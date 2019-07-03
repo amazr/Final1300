@@ -34,8 +34,84 @@ struct line {
 	int lineNum;
 };
 
+bool doesVarExist(string varName) {
+	for (auto name : var_types) {
+		if (name.first == varName) {
+			return true;
+		}
+	}
+	return false;
+}
+
 //Eventually this will evaluate an expression passed to it and return it... WIP
-auto evaluate(string expression, string type) {
+int evaluateInt(string expression) {
+	//For ++
+	if (expression == operators[5]) {
+		return 1;
+	}
+	//For --
+	else if (expression == operators[6]) {
+		return -1;
+	}
+	//for +=
+	else if ((expression[0] == '+' || expression[0] == '-') && expression[1] == '=') {
+
+		string newVal = "";
+		for (int i = 2; i < expression.size(); i++) {
+			newVal += expression[i];
+		}
+		//Check to see if the incrememnt is another variable
+		if (doesVarExist(newVal)) {
+			if (var_types[newVal] == datatypes[0]) {
+				return int_vars[newVal];
+			}
+			else if (var_types[newVal] == datatypes[1]) {
+				return (int)dec_vars[newVal];
+			}
+		}
+
+		if (expression[0] == '-') {
+			return -stoi(newVal);
+		}
+		return stoi(newVal);
+	}
+
+	return 0;
+}
+
+float evaluateDec(string expression) {
+	//For ++
+	if (expression == operators[5]) {
+		return 1.0;
+	}
+	//For --
+	else if (expression == operators[6]) {
+		return -1.0;
+	}
+	//for +=
+	else if ((expression[0] == '+' || expression[0] == '-') && expression[1] == '=') {
+
+		string newVal = "";
+		for (int i = 2; i < expression.size(); i++) {
+			newVal += expression[i];
+		}
+
+		//Check to see if the incrememnt is another variable
+		if (doesVarExist(newVal)) {
+			if (var_types[newVal] == datatypes[0]) {
+				return (float)int_vars[newVal];
+			}
+			else if (var_types[newVal] == datatypes[1]) {
+				return dec_vars[newVal];
+			}
+		}
+
+		if (expression[0] == '-') {
+			return -stof(newVal);
+		}
+		return stof(newVal);
+	}
+
 	return 0;
 }
 
@@ -84,6 +160,7 @@ void updateVar(line thisLine) {
 
 	string varName = "";
 	string expression = "";
+	string updateBy = "";
 	bool doUpdate = false;
 
 	int newIntVal;
@@ -96,9 +173,41 @@ void updateVar(line thisLine) {
 	for (int i = 0; i < thisLine.lineStr.size(); i++) {
 
 		varName += thisLine.lineStr[i];
+		if (thisLine.lineStr[i] == '=' || thisLine.lineStr[i] == '+' || thisLine.lineStr[i] == '-') {
 
-		if (thisLine.lineStr[i] == '=') {
 			varName.erase(i);
+			//for ++ operator
+			if (thisLine.lineStr[i] == '+' && thisLine.lineStr[i + 1] == '+') {
+				expression = operators[5];
+				updateBy = operators[5];
+				for (int j = i + 1; j < thisLine.lineStr.size(); j++) {
+					thisLine.lineStr.erase(i);
+				}
+			}
+			//for -- operator
+			else if (thisLine.lineStr[i] == '-' && thisLine.lineStr[i + 1] == '-') {
+				expression = operators[6];
+				updateBy = operators[6];
+				for (int j = i + 1; j < thisLine.lineStr.size(); j++) {
+					thisLine.lineStr.erase(i);
+				}
+			}
+			//for += operator
+			else if (thisLine.lineStr[i] == '+' && thisLine.lineStr[i + 1] == '=') {
+				expression = operators[7];
+				updateBy = operators[7];
+				i++;
+			}
+			//for -= operator
+			else if (thisLine.lineStr[i] == '-' && thisLine.lineStr[i + 1] == '=') {
+				expression = operators[8];
+				updateBy = operators[8];
+				i++;
+			}
+			else if (thisLine.lineStr[i] == '=') {
+				updateBy = "=";
+			}
+			//sets the expression after the update operator
 			for (int j = i + 1; j < thisLine.lineStr.size(); j++) {
 
 				expression += thisLine.lineStr[j];
@@ -108,7 +217,7 @@ void updateVar(line thisLine) {
 		}
 	}
 	if (doUpdate) {
-	
+
 		string varType = fetchVarType(varName);
 		bool isExpression = false;
 		
@@ -125,8 +234,10 @@ void updateVar(line thisLine) {
 		//new int value
 		if (varType == datatypes[0]) {
 			if (isExpression) {
-				newIntVal = evaluate(expression, datatypes[0]);
-				int_vars[varName] = newIntVal;
+				newIntVal = evaluateInt(expression);
+				if (updateBy == operators[5] || updateBy == operators[6] || updateBy == operators[7] || updateBy == operators[8]) {
+					int_vars[varName] += newIntVal;
+				}
 			}
 			else {
 				try {
@@ -149,8 +260,10 @@ void updateVar(line thisLine) {
 		//new dec value
 		else if (varType == datatypes[1]) {
 			if (isExpression) {
-				newDecVal = evaluate(expression, datatypes[1]);
-				dec_vars[varName] = newDecVal;
+				newDecVal = evaluateDec(expression);
+				if (updateBy == operators[5] || updateBy == operators[6] || updateBy == operators[7] || updateBy == operators[8]) {
+					dec_vars[varName] += newDecVal;
+				}
 			}
 			else {
 				try {
