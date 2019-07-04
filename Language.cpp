@@ -76,6 +76,8 @@ int evaluateInt(string expression) {
 		return stoi(newVal);
 	}
 
+
+	//create warning
 	return 0;
 }
 
@@ -112,6 +114,8 @@ float evaluateDec(string expression) {
 		return stof(newVal);
 	}
 
+
+	//create warning
 	return 0;
 }
 
