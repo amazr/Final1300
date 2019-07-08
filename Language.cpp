@@ -17,7 +17,9 @@ unordered_map<string, string> var_types;
 //Vectors for various things
 vector<string> datatypes = { "int", "dec", "chr", "str", "bol" };
 vector<string> operators = {"+", "-", "*", "/", "%", "++", "--", "+=", "-="};
-vector<string> keywords = { "display" };
+int numOfBasicOperators = 5;
+vector<string> keywords = { "display" , "if" };
+vector<string> evalWords = { "is" , "not" , "and" , "or" };
 vector<string> warnings;
 string warnStr;
 
@@ -41,6 +43,18 @@ bool doesVarExist(string varName) {
 		}
 	}
 	return false;
+}
+
+//This will return an error if a var is not found in the map... call this always for errors
+string fetchVarType(string varName) {
+	auto found = var_types.find(varName);
+	if (found != var_types.end()) {
+		return var_types[varName];
+	}
+	else {
+		warnings.push_back(warnStr + " :" + varName + ": was not found");
+		return "";
+	}
 }
 
 //Eventually this will evaluate an expression passed to it and return it... WIP
@@ -76,9 +90,200 @@ int evaluateInt(string expression) {
 		return stoi(newVal);
 	}
 
+	//For all other expressions
+	vector<string> expressionOperator;
+	string opTemp = "";
+	string numTemp = "";
+	vector<string> numbers;
+	bool foundOP = false;
+	
 
-	//create warning
-	return 0;
+	for (int i = 0; i < expression.size(); i++) {
+		//runs through operators
+		for (int j = 0; j < numOfBasicOperators; j++) {
+			if (expression[i] == operators[j][0]) {
+				opTemp += expression[i];
+				expressionOperator.push_back(opTemp);
+				numbers.push_back(numTemp);
+				numTemp = "";
+				opTemp = "";
+				foundOP = true;
+				continue;
+			}
+		}
+
+		//sets the number
+		if (!foundOP) {
+			numTemp += expression[i];
+		}
+		else {
+			foundOP = false;
+		}
+	}
+
+	numbers.push_back(numTemp);
+
+	int numCounter = 1;
+	int result = 0;
+	if (doesVarExist(numbers[0])) {
+		string type = fetchVarType(numbers[0]);
+		//int
+		if (type == datatypes[0]) {
+			result = int_vars[numbers[0]];
+		}
+		//dec
+		if (type == datatypes[1]) {
+			result = static_cast<int>(dec_vars[numbers[0]]);
+		}
+	}
+	else {
+		result = stoi(numbers[0]);
+	}
+	for (int i = 0; i < expressionOperator.size(); i++) {
+
+		if (numbers.size() == numCounter) {
+			warnings.push_back(warnStr + " Operator with no number after it.");
+			return 0;
+		}
+
+		//Addition
+		if (expressionOperator[i] == operators[0]) {
+			if (doesVarExist(numbers[numCounter])) {
+
+				string type = fetchVarType(numbers[numCounter]);
+				//int
+				if (type == datatypes[0]) {
+					result += int_vars[numbers[numCounter]];
+				}
+				//dec
+				if (type == datatypes[1]) {
+					result += static_cast<int>(dec_vars[numbers[numCounter]]);
+				}
+			}
+			else {
+				try {
+					result += stoi(numbers[numCounter]);
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Some invalid value was used.");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Some value is out of integer range.");
+				}
+			}
+			numCounter++;
+		}
+		//Subtraction
+		else if (expressionOperator[i] == operators[1]) {
+			if (doesVarExist(numbers[numCounter])) {
+
+				string type = fetchVarType(numbers[numCounter]);
+				//int
+				if (type == datatypes[0]) {
+					result -= int_vars[numbers[numCounter]];
+				}
+				//dec
+				if (type == datatypes[1]) {
+					result -= static_cast<int>(dec_vars[numbers[numCounter]]);
+				}
+			}
+			else {
+				try {
+					result -= stoi(numbers[numCounter]);
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Some invalid value was used.");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Some value is out of integer range.");
+				}
+			}
+			numCounter++;
+		}
+		//Multiplication
+		else if (expressionOperator[i] == operators[2]) {
+			if (doesVarExist(numbers[numCounter])) {
+
+				string type = fetchVarType(numbers[numCounter]);
+				//int
+				if (type == datatypes[0]) {
+					result *= int_vars[numbers[numCounter]];
+				}
+				//dec
+				if (type == datatypes[1]) {
+					result *= static_cast<int>(dec_vars[numbers[numCounter]]);
+				}
+			}
+			else {
+				try {
+					result *= stoi(numbers[numCounter]);
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Some invalid value was used.");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Some value is out of integer range.");
+				}
+			}
+			numCounter++;
+		}
+		//Division
+		else if (expressionOperator[i] == operators[3]) {
+			if (doesVarExist(numbers[numCounter])) {
+
+				string type = fetchVarType(numbers[numCounter]);
+				//int
+				if (type == datatypes[0]) {
+					result /= int_vars[numbers[numCounter]];
+				}
+				//dec
+				if (type == datatypes[1]) {
+					result /= static_cast<int>(dec_vars[numbers[numCounter]]);
+				}
+			}
+			else {
+				try {
+					result /= stoi(numbers[numCounter]);
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Some invalid value was used.");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Some value is out of integer range.");
+				}
+			}
+			numCounter++;
+		}
+		//Modulus
+		else if (expressionOperator[i] == operators[4]) {
+		if (doesVarExist(numbers[numCounter])) {
+
+			string type = fetchVarType(numbers[numCounter]);
+			//int
+			if (type == datatypes[0]) {
+				result %= int_vars[numbers[numCounter]];
+			}
+			//dec
+			if (type == datatypes[1]) {
+				result %= static_cast<int>(dec_vars[numbers[numCounter]]);
+			}
+		}
+		else {
+			try {
+				result %= stoi(numbers[numCounter]);
+			}
+			catch (invalid_argument) {
+				warnings.push_back(warnStr + " Some invalid value was used.");
+			}
+			catch (out_of_range) {
+				warnings.push_back(warnStr + " Some value is out of integer range.");
+			}
+		}
+		numCounter++;
+		}
+	}
+
+	return result;
 }
 
 float evaluateDec(string expression) {
@@ -114,21 +319,228 @@ float evaluateDec(string expression) {
 		return stof(newVal);
 	}
 
+	//For all other expressions
+	vector<string> expressionOperator;
+	string opTemp = "";
+	string numTemp = "";
+	vector<string> numbers;
+	bool foundOP = false;
 
-	//create warning
-	return 0;
+
+	for (int i = 0; i < expression.size(); i++) {
+		//runs through operators
+		for (int j = 0; j < numOfBasicOperators; j++) {
+			if (expression[i] == operators[j][0]) {
+				opTemp += expression[i];
+				expressionOperator.push_back(opTemp);
+				numbers.push_back(numTemp);
+				numTemp = "";
+				opTemp = "";
+				foundOP = true;
+				continue;
+			}
+		}
+
+		//sets the number
+		if (!foundOP) {
+			numTemp += expression[i];
+		}
+		else {
+			foundOP = false;
+		}
+	}
+
+	numbers.push_back(numTemp);
+
+	int numCounter = 1;
+	float result = 0;
+	if (doesVarExist(numbers[0])) {
+		string type = fetchVarType(numbers[0]);
+		//int
+		if (type == datatypes[0]) {
+			result = static_cast<float>(int_vars[numbers[0]]);
+		}
+		//dec
+		if (type == datatypes[1]) {
+			result = dec_vars[numbers[0]];
+		}
+	}
+	else {
+		result = stof(numbers[0]);
+	}
+	for (int i = 0; i < expressionOperator.size(); i++) {
+
+		if (numbers.size() == numCounter) {
+			warnings.push_back(warnStr + " Operator with no number after it.");
+			return 0;
+		}
+
+		//Addition
+		if (expressionOperator[i] == operators[0]) {
+			if (doesVarExist(numbers[numCounter])) {
+
+				string type = fetchVarType(numbers[numCounter]);
+				//int
+				if (type == datatypes[0]) {
+					result += static_cast<float>(int_vars[numbers[numCounter]]);
+				}
+				//dec
+				if (type == datatypes[1]) {
+					result += dec_vars[numbers[numCounter]];
+				}
+			}
+			else {
+				try {
+					result += stof(numbers[numCounter]);
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Some invalid value was used.");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Some value is out of integer range.");
+				}
+			}
+			numCounter++;
+		}
+		//Subtraction
+		else if (expressionOperator[i] == operators[1]) {
+			if (doesVarExist(numbers[numCounter])) {
+
+				string type = fetchVarType(numbers[numCounter]);
+				//int
+				if (type == datatypes[0]) {
+					result -= static_cast<float>(int_vars[numbers[numCounter]]);
+				}
+				//dec
+				if (type == datatypes[1]) {
+					result -= dec_vars[numbers[numCounter]];
+				}
+			}
+			else {
+				try {
+					result -= stof(numbers[numCounter]);
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Some invalid value was used.");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Some value is out of integer range.");
+				}
+			}
+			numCounter++;
+		}
+		//Multiplication
+		else if (expressionOperator[i] == operators[2]) {
+			if (doesVarExist(numbers[numCounter])) {
+
+				string type = fetchVarType(numbers[numCounter]);
+				//int
+				if (type == datatypes[0]) {
+					result *= static_cast<float>(int_vars[numbers[numCounter]]);
+				}
+				//dec
+				if (type == datatypes[1]) {
+					result *= dec_vars[numbers[numCounter]];
+				}
+			}
+			else {
+				try {
+					result *= stof(numbers[numCounter]);
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Some invalid value was used.");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Some value is out of integer range.");
+				}
+			}
+			numCounter++;
+		}
+		//Division
+		else if (expressionOperator[i] == operators[3]) {
+			if (doesVarExist(numbers[numCounter])) {
+
+				string type = fetchVarType(numbers[numCounter]);
+				//int
+				if (type == datatypes[0]) {
+					result /= static_cast<float>(int_vars[numbers[numCounter]]);
+				}
+				//dec
+				if (type == datatypes[1]) {
+					result /= dec_vars[numbers[numCounter]];
+				}
+			}
+			else {
+				try {
+					result /= stof(numbers[numCounter]);
+				}
+				catch (invalid_argument) {
+					warnings.push_back(warnStr + " Some invalid value was used.");
+				}
+				catch (out_of_range) {
+					warnings.push_back(warnStr + " Some value is out of integer range.");
+				}
+			}
+			numCounter++;
+		}
+		//Modulus
+		else if (expressionOperator[i] == operators[4]) {
+			warnings.push_back(warnStr + " Cannot perform modulus on a dec datatype.");
+			return 0;
+		}
+	}
+
+	return result;
+
 }
 
 //This will display all characters to the right of "display:" to the terminal
 void displayFunction(line thisLine, int wordLocation) {
 	
 	if (thisLine.strLiteral == "") {
-		cout << endl << "Warning on line " << thisLine.lineNum << " -> Empty display function" << endl;
+		warnings.push_back(warnStr + " Empty disaply function");
 		return;
 	}
 
 	cout << thisLine.strLiteral;
 	
+}
+
+void ifFunction(line thisLine) {
+	int start = 2;
+	string line = thisLine.lineStr;
+
+	struct evalTerms {
+		string term;
+		int location;
+	};
+
+	vector<evalTerms> evaluations;
+	vector<string> varNames;
+	evalTerms temp;
+
+	for (auto word : evalWords) {
+		size_t found = line.find(word);
+		while (found != string::npos) {
+
+			temp.term = word;
+			temp.location = found;
+			evaluations.push_back(temp);
+
+			found = line.find(word, found + 1);
+		}
+	}
+
+	//if the if statement is a true or false conditional
+	bool tofIF = false;
+	for (auto elem : evaluations) {
+		if (elem.location == 2) {
+			tofIF = true;
+		}
+	}
+
+
+
 }
 
 //This function will check if a keyword was used and handle that keywords function
@@ -141,23 +553,18 @@ bool checkForKeywords(line thisLine) {
 				displayFunction(thisLine, found);
 				return true;
 			}
+			//found if statement
+			else if (word == keywords.at(1)) {
+				ifFunction(thisLine);
+				return true;
+			}
 		}
 	}
 
 	return false;
 }
 
-//This will return an error if a var is not found in the map... call this always for errors
-string fetchVarType(string varName) {
-	auto found = var_types.find(varName);
-	if (found != var_types.end()) {
-		return var_types[varName];
-	}
-	else {
-		warnings.push_back(warnStr + " :" + varName + ": was not found");
-		return "";
-	}
-}
+
 
 //This will EVENTUALLY update a variables value... WIP
 void updateVar(line thisLine) {
@@ -242,6 +649,9 @@ void updateVar(line thisLine) {
 				if (updateBy == operators[5] || updateBy == operators[6] || updateBy == operators[7] || updateBy == operators[8]) {
 					int_vars[varName] += newIntVal;
 				}
+				else {
+					int_vars[varName] = newIntVal;
+				}
 			}
 			else {
 				try {
@@ -267,6 +677,9 @@ void updateVar(line thisLine) {
 				newDecVal = evaluateDec(expression);
 				if (updateBy == operators[5] || updateBy == operators[6] || updateBy == operators[7] || updateBy == operators[8]) {
 					dec_vars[varName] += newDecVal;
+				}
+				else {
+					dec_vars[varName] = newDecVal;
 				}
 			}
 			else {
