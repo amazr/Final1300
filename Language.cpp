@@ -19,7 +19,7 @@ vector<string> datatypes = { "int", "dec", "chr", "str", "bol" };
 vector<string> operators = {"+", "-", "*", "/", "%", "++", "--", "+=", "-="};
 int numOfBasicOperators = 5;
 vector<string> keywords = { "display" , "if" };
-vector<string> evalWords = { "is" , "not" , "and" , "or" };
+vector<string> evalWords = { "=" , "!=" , "and" , "or" };
 vector<string> warnings;
 string warnStr;
 
@@ -506,62 +506,142 @@ void displayFunction(line thisLine, int wordLocation) {
 	
 }
 
-void ifFunction(line thisLine) {
+//Returns true if you are in a condition, false if not. Line reader should check for tab spacing and execute if this was true
+bool ifFunction(line thisLine) {
 	int start = 2;
 	string line = thisLine.lineStr;
+	vector<string> valueVector;
+	string tempValue = "";
+	vector<string> valueVectorType;
+	vector<bool> isVariable(20, false);
+	vector<int> equalityLocation;
 
-	struct evalTerms {
-		string term;
-		int location;
-	};
+	for (int i = start; i < line.size(); i++) {
+		if (line[i] == '=') {
+			valueVector.push_back(tempValue);
+			tempValue = "";
+		}
+		else {
+			tempValue += line[i];
+		}
 
-	vector<evalTerms> evaluations;
-	vector<string> varNames;
-	evalTerms temp;
+	}
+	//When the loop ends
+	valueVector.push_back(tempValue);
 
-	for (auto word : evalWords) {
-		size_t found = line.find(word);
-		while (found != string::npos) {
-
-			temp.term = word;
-			temp.location = found;
-			evaluations.push_back(temp);
-
-			found = line.find(word, found + 1);
+	for (int i = 0; i < valueVector.size(); i++) {
+		if (doesVarExist(valueVector.at(i))) {
+			valueVectorType.push_back(fetchVarType(valueVector.at(i)));
+			isVariable.at(i) = true;
+		}
+		else {
+			if (valueVector.at(i) == "true") {
+				valueVectorType.push_back("bol");
+			}
+			else if (valueVector.at(i) == "false") {
+				valueVectorType.push_back("bol");
+			}
+			else {
+				for (int j = 0; j < valueVector.at(i).size(); j++) {
+					if (valueVector.at(i)[j] == '\"') {
+						valueVectorType.push_back("str");
+						//remove quotes
+						string tempStr = valueVector[i];
+						for (int k = 0; k < tempStr.size(); k++) {
+							if (tempStr[k] == '\"') {
+								tempStr.erase(tempStr.begin() + k);
+							}
+						}
+						valueVector[i] = tempStr;
+					}
+					else if (valueVector.at(i)[j] == '.') {
+						valueVectorType.push_back("dec");
+					}
+					else if (valueVector.at(i)[j] == '\'') {
+						valueVectorType.push_back("chr");
+						//remove single quotes
+						string tempStr = valueVector[i];
+						for (int k = 0; k < tempStr.size(); k++) {
+							if (tempStr[k] == '\'') {
+								tempStr.erase(tempStr.begin() + k);
+							}
+						}
+						valueVector[i] = tempStr;
+					}
+				}
+				valueVectorType.push_back("int");
+			}
 		}
 	}
 
-	//if the if statement is a true or false conditional
-	bool tofIF = false;
-	for (auto elem : evaluations) {
-		if (elem.location == 2) {
-			tofIF = true;
+	string value1, value2;
+
+	if (isVariable[0]) {
+		//ints
+		if (valueVectorType[0] == datatypes[0]) {
+			value1 = to_string(int_vars[valueVector[0]]);
+		}
+		//dec
+		else if (valueVectorType[0] == datatypes[1]) {
+			value1 = to_string(dec_vars[valueVector[0]]);
+		}
+		//chr
+		else if (valueVectorType[0] == datatypes[2]) {
+			value1 = to_string(chr_vars[valueVector[0]]);
+		}
+		//str
+		else if (valueVectorType[0] == datatypes[3]) {
+			value1 = str_vars[valueVector[0]];
+		}
+		//bol
+		else if (valueVectorType[0] == datatypes[4]) {
+			if (bol_vars[valueVector[0]]) {
+				value1 = "true";
+			}
+			else {
+				value1 = "false";
+			}
 		}
 	}
 
+	for (int i = 0; i < valueVector.size(); i++) {
+		cout << "value: " << valueVector[i] << "\t";
+	}
+	cout << endl;
 
+	if (value1 == valueVector.at(1)) {
+		return true;
+	}
+	else {
+		return false;
+	}
 
 }
 
-//This function will check if a keyword was used and handle that keywords function
-bool checkForKeywords(line thisLine) {
+//This function will check if a keyword was used and handle that keywords function; returns int value of which keyword was found
+int checkForKeywords(line thisLine) {
 	for (auto word : keywords) {
 		size_t found = thisLine.lineStr.find(word);
 		if (found != string::npos) {
 			//found display 
 			if (word == keywords.at(0)) {
 				displayFunction(thisLine, found);
-				return true;
+				return 0;
 			}
 			//found if statement
 			else if (word == keywords.at(1)) {
-				ifFunction(thisLine);
-				return true;
+				if (ifFunction(thisLine)) {
+					return 1;
+				}
+				else {
+					//This returns the code to skip all prior tabbed lines			MUST CODE THIS IN READLINE
+					return -2;
+				}
 			}
 		}
 	}
 
-	return false;
+	return -1;
 }
 
 
@@ -1020,6 +1100,8 @@ void readLine(line thisLine) {
 	typelocation newType;
 	warnStr = "WARNING[line " + to_string(thisLine.lineNum) + "]:";
 	int varCreated = 0;
+	int keyWordCode = -1;
+	string conditional;
 
 	//This will also handle the spacing within string literals
 	thisLine = removeWhitespace(thisLine);
@@ -1032,8 +1114,17 @@ void readLine(line thisLine) {
 	
 	//This will be called to update variables and check if a keyword was used 
 	if (varCreated == 0 && thisLine.lineStr != "") {
-		if (!checkForKeywords(thisLine)) {
+		keyWordCode = checkForKeywords(thisLine);
+		if (keyWordCode == -1) {
 			updateVar(thisLine);
+		}
+		else if (keyWordCode == 1) {
+			conditional = "The conditional on line " + to_string(thisLine.lineNum) + " will run";
+			cout << conditional << endl;
+		}
+		else if (keyWordCode == -2) {
+			conditional = "The conditional on line " + to_string(thisLine.lineNum) + " will NOT run";
+			cout << conditional << endl;
 		}
 		
 	}
